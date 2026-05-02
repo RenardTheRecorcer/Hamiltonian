@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hamiltonian Cycle Visualizer - BCS 309</title>
+<style>
+  :root{
+    --bg:#120a0a;
+    --panel:#180e0e;
+    --panel-2:#201111;
+    --panel-3:#170c0c;
+    --border:#3a1010;
+    --text:#f5d8d8;
+    --muted:#aa4040;
+    --accent:#c01818;
+    --accent-2:#a81414;
+    --accent-3:#ae7aea;
+    --good:#3dd9a2;
+    --warn:#ff8f5a;
+    --bad:#f36a8d;
+    --cyan:#bb0f0f;
+    --shadow:0 18px 50px rgba(0,0,0,.45);
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:radial-gradient(circle at top left,#280f0f 0%, #140a0a 26%, #0e0606 100%);
+    color:var(--text);
+  }
+  .page{max-width:1440px;margin:0 auto;padding:18px}
+  .shell{display:grid;grid-template-columns:420px 1fr;gap:16px}
+  .card{
+    background:linear-gradient(180deg,rgba(30,14,14,.96),rgba(18,8,8,.98));
+    border:1px solid rgba(150,20,20,.18);
+    border-radius:22px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .card-header{
+    padding:16px 18px;font-weight:800;font-size:1.03rem;
+    border-bottom:1px solid rgba(150,20,20,.15);
+    background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.01));
+  }
+  .controls{padding:14px 14px 18px}
+  .section{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(150,20,20,.12)}
+  .section:last-child{margin-bottom:0;border-bottom:0;padding-bottom:0}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
+  .field{display:flex;flex-direction:column;gap:6px}
+  label,.mini-title{font-size:.84rem;color:#c05555}
+  select,input[type="text"],input[type="number"],textarea{
+    width:100%;background:#180c0c;color:var(--text);
+    border:1px solid #3a1010;border-radius:12px;padding:11px 12px;outline:none;
+  }
+  textarea{min-height:120px;resize:vertical;line-height:1.45}
+  input[type="range"]{width:100%}
+  .speed-label{font-size:.88rem;color:#c05555}
+  .btn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .btn-grid.five{grid-template-columns:repeat(5,1fr)}
+  button{
+    border:1px solid #3a1010;
+    background:linear-gradient(180deg,#2a1010,#200a0a);
+    color:white;border-radius:14px;padding:11px 12px;font-weight:700;cursor:pointer;
+    transition:transform .18s ease, filter .18s ease, border-color .18s ease;
+  }
+  button:hover{transform:translateY(-1px);filter:brightness(1.12)}
+  button.secondary{background:linear-gradient(180deg,#260e0e,#1c0808)}
+  button.danger{background:linear-gradient(180deg,#4f2235,#3a1828)}
+  button.gold{background:linear-gradient(180deg,#501010,#3c0808)}
+  button.active-chip{border-color:#c01818;box-shadow:0 0 0 2px rgba(200,30,30,.14) inset}
+  .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat{
+    border:1px solid rgba(150,20,20,.16);background:#180a0a;
+    border-radius:14px;padding:10px 12px;min-height:64px;
+  }
+  .stat .name{font-size:.82rem;color:#bb5555}
+  .stat .value{margin-top:6px;font-size:1.15rem;font-weight:800}
+  .tip{font-size:.84rem;color:#c87070;line-height:1.5}
+  details{
+    border:1px solid rgba(150,20,20,.16);background:#180a0a;
+    border-radius:16px;padding:10px 12px;margin-top:10px;
+  }
+  summary{cursor:pointer;font-weight:800;color:#f0c0c0}
+  .details-body{color:#c87070;font-size:.93rem;line-height:1.6;padding-top:10px}
+  .concept-box{
+    border-left:4px solid var(--accent-2);
+    background:rgba(180,30,30,.08);
+    padding:10px 12px;border-radius:12px;margin-top:12px;
+  }
+  .right-col{display:grid;grid-template-rows:auto auto auto 1fr;gap:16px}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;padding:10px 18px 0}
+  .legend-item{display:flex;gap:8px;align-items:center;font-size:.84rem;color:#cc7070}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .viz-wrap{padding:12px 14px 16px}
+  .graph-area{
+    background:linear-gradient(180deg,#180a0a,#120707);
+    border:1px solid rgba(150,20,20,.14);
+    border-radius:18px;min-height:430px;position:relative;overflow:hidden;
+  }
+  svg{display:block;width:100%;height:100%}
+  .pq-panel,.code-panel,.explain-panel,.history-panel,.chart-panel{padding:12px 14px 16px}
+  .subcard{
+    background:linear-gradient(180deg,#180a0a,#100707);
+    border:1px solid rgba(150,20,20,.14);border-radius:18px;overflow:hidden;
+  }
+  .subheader{
+    padding:12px 14px;font-weight:800;color:#cc3030;
+    border-bottom:1px solid rgba(150,20,20,.12);
+    background:linear-gradient(90deg,rgba(200,30,30,.12),rgba(200,30,30,.03));
+  }
+  .pq-table,.history-table{width:100%;border-collapse:collapse}
+  .pq-table th,.pq-table td,.history-table th,.history-table td{
+    padding:9px 10px;border-bottom:1px solid rgba(150,20,20,.1);text-align:left;font-size:.9rem;
+  }
+  .pq-table th,.history-table th{color:#bb4444;font-weight:700;background:rgba(255,255,255,.02)}
+  .history-shell{max-height:260px;overflow:auto}
+  .history-table tr{cursor:pointer}
+  .history-table tr:hover{background:rgba(200,30,30,.08)}
+  .badge{display:inline-block;border-radius:999px;padding:3px 8px;font-size:.76rem;font-weight:800}
+  .b-final{background:rgba(61,217,162,.15);color:#84f0c6}
+  .b-active{background:rgba(200,30,30,.16);color:#dd5555}
+  .b-frontier{background:rgba(174,122,234,.16);color:#d0a8ff}
+  pre{
+    margin:0;padding:14px 16px 18px;white-space:pre-wrap;font-size:.95rem;line-height:1.65;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#f8e8e8;
+    max-height:350px;overflow:auto;
+  }
+  .code-line{display:block;padding:2px 8px;border-radius:8px;position:relative}
+  .code-line .ln{display:inline-block;width:24px;color:#883030}
+  .code-line.active{background:rgba(200,30,30,.14);outline:1px solid rgba(200,30,30,.26)}
+  .code-line:hover::after{
+    content:attr(data-tip);position:absolute;left:32px;top:100%;z-index:20;
+    width:min(420px,75vw);padding:8px 10px;border-radius:10px;
+    background:#1e0808;border:1px solid #4a1010;color:#eec0c0;font-size:.82rem;line-height:1.45;
+    box-shadow:var(--shadow);
+  }
+  .explain{padding:14px 16px;color:#e8b8b8;line-height:1.55;min-height:68px}
+  .footer-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+  .chart-area{padding:12px}
+  .small{font-size:.82rem;color:var(--muted)}
+  .pill-row{display:flex;gap:10px;flex-wrap:wrap;padding:10px 0 0}
+  .pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(150,20,20,.15);font-size:.8rem}
+  .worked{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .muted{color:var(--muted)}
+  .kpi-inline{display:flex;gap:18px;flex-wrap:wrap;font-size:.92rem;color:#cc7070;padding:0 18px 10px}
+  .toolbar-title{display:flex;justify-content:space-between;gap:12px;align-items:center}
+  .toolbar-title span:last-child{font-size:.88rem;color:#a84444;font-weight:700}
+  .mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .algo-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .algo-toggle button.selected{border-color:#c01818;background:linear-gradient(180deg,#580e0e,#3c0808)}
+  @media (max-width:980px){
+    .shell{grid-template-columns:1fr}
+    .footer-grid,.worked,.row,.chips,.btn-grid.five,.mini-grid,.algo-toggle{grid-template-columns:1fr}
+    .graph-area{min-height:360px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="shell">
+    <aside class="card">
+      <div class="card-header">Controls</div>
+      <div class="controls">
+        <div class="section">
+          <div class="row">
+            <div class="field">
+              <label for="presetSelect">Preset Graph</label>
+              <select id="presetSelect"></select>
+            </div>
+            <div class="field">
+              <label for="speedRange">Speed: <span id="speedValue">1.00x</span></label>
+              <input id="speedRange" type="range" min="0.25" max="4" step="0.25" value="1">
+            </div>
+          </div>
+          <div class="chips" style="margin-top:10px">
+            <button class="secondary" data-example="pentagon">Pentagon (5)</button>
+            <button class="secondary" data-example="petersen">Petersen-like</button>
+            <button class="secondary" data-example="complete5">Complete K5</button>
+            <button class="secondary" data-example="noHam">No HC (Tree)</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="field">
+            <label for="startSelect">Start Vertex</label>
+            <select id="startSelect"></select>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label for="edgeInput">Custom edge list (one edge per line: <code>u v</code>)</label>
+            <textarea id="edgeInput"></textarea>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div class="field">
+              <label>Layout</label>
+              <select id="layoutMode">
+                <option value="preset">Use preset layout</option>
+                <option value="circle">Circle layout</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Algorithm</label>
+              <select id="algoMode">
+                <option value="heldkarp">Held-Karp DP</option>
+                <option value="bruteforce">Brute-Force</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="btn-grid five">
+            <button id="buildBtn" class="gold">Build Steps</button>
+            <button id="stepBtn">Step</button>
+            <button id="playBtn">Play</button>
+            <button id="pauseBtn" class="secondary">Pause</button>
+            <button id="resetBtn" class="danger">Reset</button>
+          </div>
+        </div>
+
+        <div class="section stat-grid">
+          <div class="stat"><div class="name">Step</div><div class="value" id="stepCounter">0 / 0</div></div>
+          <div class="stat"><div class="name">Status</div><div class="value" id="statusValue">Idle</div></div>
+          <div class="stat"><div class="name">Paths Checked</div><div class="value" id="pathsCount">0</div></div>
+          <div class="stat"><div class="name">DP States</div><div class="value" id="dpStates">0</div></div>
+          <div class="stat"><div class="name">Backtracks</div><div class="value" id="backtracks">0</div></div>
+          <div class="stat"><div class="name">Result</div><div class="value" id="resultValue">—</div></div>
+        </div>
+
+        <div class="tip section">
+          Tip: Click <b>Build Steps</b> after changing the graph or start vertex. Use <b>Step</b> for line-by-line teaching, or <b>Play</b> for animation. The "No HC" preset demonstrates a graph with no Hamiltonian cycle.
+        </div>
+
+        <div class="section">
+          <details open>
+            <summary>Hamiltonian Cycle — Overview</summary>
+            <div class="details-body">
+              <b>Core idea.</b> Find a cycle that visits every vertex in the graph exactly once and returns to the starting vertex.
+              <div class="concept-box"><b>NP-Complete:</b> No known polynomial-time algorithm exists. We compare brute-force O(n!) with the Held-Karp DP approach O(2<sup>n</sup> · n<sup>2</sup>).</div>
+              <p><b>Brute-Force:</b> Try all (n−1)! permutations of vertices. For each, check if consecutive vertices are connected and if the last connects back to the start.</p>
+              <p><b>Held-Karp DP:</b> Use bitmask DP where dp[S][v] = true if there is a Hamiltonian path visiting exactly the vertices in subset S, ending at v. Build up from subsets of size 2 to n.</p>
+              <p><b>Applications:</b> Circuit board testing (visiting all test points), DNA fragment assembly, route planning, and the Travelling Salesman Problem (weighted variant).</p>
+            </div>
+          </details>
+          <details>
+            <summary>Worked Example</summary>
+            <div class="details-body">
+              Consider a pentagon graph with vertices 0–4 and edges forming a cycle: 0-1, 1-2, 2-3, 3-4, 4-0. Starting at vertex 0, Held-Karp fills dp[{0,1},1]=true, dp[{0,4},4]=true, etc. Eventually dp[{0,1,2,3,4},v]=true for some v adjacent to 0 confirms a Hamiltonian cycle exists. The cycle is 0→1→2→3→4→0.
+            </div>
+          </details>
+          <details>
+            <summary>NP-Completeness Proof Sketch</summary>
+            <div class="details-body">
+              <b>Step 1 — In NP:</b> Given a sequence of vertices, verify it's a valid HC in O(n): check all vertices appear exactly once, consecutive pairs are edges, and last connects to first.
+              <div class="concept-box"><b>Step 2 — Reduction from Vertex Cover:</b> Given a Vertex Cover instance (G, k), construct widget subgraphs for each edge of G. A Hamiltonian cycle in the constructed graph ↔ a vertex cover of size k in G. The construction runs in polynomial time.</div>
+              <p><b>Forward:</b> If G has a vertex cover of size k, the cover vertices "traverse" their edge widgets in a way that forms a Hamiltonian cycle.</p>
+              <p><b>Backward:</b> If the constructed graph has a HC, the cycle structure forces exactly k "selector" vertices to cover all edges.</p>
+            </div>
+          </details>
+          <details>
+            <summary>Key Concepts</summary>
+            <div class="details-body">
+              <ul>
+                <li><b>Bitmask DP:</b> Represent visited vertex subsets as integers. Bit i is set if vertex i is visited.</li>
+                <li><b>Optimal substructure:</b> A Hamiltonian path through S ending at v extends a path through S\{v} ending at some neighbor u of v.</li>
+                <li><b>Difference from Euler:</b> Eulerian circuit visits every <i>edge</i> once (poly-time checkable). Hamiltonian cycle visits every <i>vertex</i> once (NP-complete).</li>
+                <li><b>Common mistake:</b> Assuming greedy (always go to the nearest unvisited vertex) finds a HC. It does not.</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+      </div>
+    </aside>
+
+    <main class="right-col">
+      <section class="card">
+        <div class="card-header toolbar-title">
+          <span>Hamiltonian Cycle Visualizer — BCS 309</span>
+          <span id="headerSubtitle">NP-Complete + Dynamic Programming Teaching Tool</span>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><span class="dot" style="background:#c01818"></span>Unvisited</div>
+          <div class="legend-item"><span class="dot" style="background:#a81414"></span>Current Vertex</div>
+          <div class="legend-item"><span class="dot" style="background:#ae7aea"></span>In Current Path</div>
+          <div class="legend-item"><span class="dot" style="background:#3dd9a2"></span>Hamiltonian Cycle Found</div>
+          <div class="legend-item"><span class="dot" style="background:#f36a8d"></span>Failed / Backtrack</div>
+          <div class="legend-item"><span class="dot" style="background:#ff8f5a"></span>Checking Edge</div>
+        </div>
+        <div class="kpi-inline">
+          <span><b>Problem:</b> NP-Complete</span>
+          <span><b>Paradigm:</b> Dynamic Programming (Held-Karp)</span>
+          <span><b>Complexity:</b> O(2<sup>n</sup> · n<sup>2</sup>) vs O(n!)</span>
+        </div>
+        <div class="viz-wrap">
+          <div class="graph-area">
+            <svg id="graphSvg" viewBox="0 0 920 500" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+        </div>
+      </section>
+
+      <section class="footer-grid">
+        <div class="card">
+          <div class="card-header">DP Table State</div>
+          <div class="pq-panel">
+            <div class="subcard">
+              <div class="subheader" id="dpTableHeader">Held-Karp DP — dp[S][v]</div>
+              <table class="pq-table">
+                <thead><tr><th>#</th><th>Subset S</th><th>End Vertex</th><th>Value</th></tr></thead>
+                <tbody id="pqBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Step Explanation</div>
+          <div class="explain-panel">
+            <div class="subcard">
+              <div class="subheader">What is happening right now?</div>
+              <div class="explain" id="explainBox">Build steps to start the visualization.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="footer-grid">
+        <div class="card">
+          <div class="card-header">Pseudocode</div>
+          <div class="code-panel">
+            <div class="subcard">
+              <div class="subheader" id="codeTitle">Held-Karp DP</div>
+              <pre id="codeBox"></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">History Table</div>
+          <div class="history-panel">
+            <div class="subcard">
+              <div class="subheader">Recent Steps (click a row to jump)</div>
+              <div class="history-shell">
+                <table class="history-table">
+                  <thead><tr><th>#</th><th>Type</th><th>Detail</th><th>Message</th></tr></thead>
+                  <tbody id="historyBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="footer-grid">
+        <div class="card">
+          <div class="card-header">CLO-4: Complexity Comparison</div>
+          <div class="chart-panel">
+            <div class="subcard">
+              <div class="subheader">Brute-Force O(n!) vs Held-Karp O(2<sup>n</sup> · n<sup>2</sup>)</div>
+              <div class="chart-area">
+                <svg id="chartSvg" viewBox="0 0 560 260"></svg>
+                <div class="pill-row">
+                  <span class="pill">Red: Held-Karp DP — O(2ⁿ · n²)</span>
+                  <span class="pill">Purple: Brute-Force — O(n!)</span>
+                </div>
+                <div style="margin-top:8px">
+                  <label style="font-size:.82rem">Graph size: </label>
+                  <input id="sizeRange" type="range" min="3" max="14" step="1" value="10" style="width:200px;vertical-align:middle">
+                </div>
+                <p class="small" id="complexityText">Held-Karp uses exponential space and time but is vastly faster than brute-force for n > 10. At n=20, brute-force would need ~2.4×10¹⁸ operations vs Held-Karp's ~419M.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">CLO-5: NP-Completeness & CLO-3: Design</div>
+          <div class="chart-panel">
+            <div class="subcard">
+              <div class="subheader">Why Hamiltonian Cycle is NP-Complete</div>
+              <div class="details-body" id="impactBox" style="padding:14px 16px 16px">
+                <b>In NP:</b> A certificate (vertex sequence) can be verified in O(n) time by checking adjacency and uniqueness.<br><br>
+                <b>NP-Hard:</b> Vertex Cover ≤<sub>p</sub> Hamiltonian Cycle. The polynomial-time reduction constructs edge widgets that force a HC to correspond to a valid vertex cover.<br><br>
+                <b>Design Paradigm — DP:</b> Held-Karp exploits <b>optimal substructure</b>: a path visiting set S ending at v can be built from paths visiting S\{v} ending at a neighbor of v. The bitmask encodes which vertices are visited, giving 2<sup>n</sup>·n states instead of n! permutations.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+(() => {
+  const presets = {
+    pentagon: {
+      name: 'Pentagon (5 vertices)',
+      start: '0',
+      positions: {0:[460,60],1:[820,230],2:[680,450],3:[240,450],4:[100,230]},
+      edges: [[0,1],[1,2],[2,3],[3,4],[4,0]]
+    },
+    petersen: {
+      name: 'Petersen-like (7 vertices)',
+      start: '0',
+      positions: {0:[460,50],1:[780,180],2:[700,420],3:[220,420],4:[140,180],5:[460,160],6:[460,340]},
+      edges: [[0,1],[1,2],[2,3],[3,4],[4,0],[0,5],[1,5],[2,6],[3,6],[5,6],[4,6]]
+    },
+    complete5: {
+      name: 'Complete K5',
+      start: '0',
+      positions: {0:[460,50],1:[810,220],2:[680,450],3:[240,450],4:[110,220]},
+      edges: [[0,1],[0,2],[0,3],[0,4],[1,2],[1,3],[1,4],[2,3],[2,4],[3,4]]
+    },
+    noHam: {
+      name: 'No HC (Star/Tree)',
+      start: '0',
+      positions: {0:[460,250],1:[260,100],2:[660,100],3:[260,400],4:[660,400],5:[460,60]},
+      edges: [[0,1],[0,2],[0,3],[0,4],[0,5]]
+    }
+  };
+
+  const hkLines = [
+    {n:1, text:'HELD_KARP(G, start)', tip:'Held-Karp DP algorithm for Hamiltonian Cycle.'},
+    {n:2, text:'  n = |V|', tip:'Number of vertices in the graph.'},
+    {n:3, text:'  dp[1 << start][start] = true', tip:'Base case: visited only start, currently at start.'},
+    {n:4, text:'  for S = 0 to 2^n - 1:', tip:'Iterate over all subsets of vertices (bitmask).'},
+    {n:5, text:'    if bit start not in S: continue', tip:'Start must always be in the subset.'},
+    {n:6, text:'    for v in S, v ≠ start:', tip:'Try each vertex in the subset as the endpoint.'},
+    {n:7, text:'      for u in S, u ≠ v, (u,v) ∈ E:', tip:'Check predecessors u adjacent to v.'},
+    {n:8, text:'        if dp[S \\ {v}][u]:', tip:'If there is a valid path through S\\{v} ending at u...'},
+    {n:9, text:'          dp[S][v] = true', tip:'...then there is a valid path through S ending at v.'},
+    {n:10, text:'  full = (1 << n) - 1', tip:'Bitmask with all vertices visited.'},
+    {n:11, text:'  for v ≠ start, (v, start) ∈ E:', tip:'Check if any full-set path endpoint connects back to start.'},
+    {n:12, text:'    if dp[full][v]: return FOUND', tip:'Hamiltonian cycle exists!'},
+    {n:13, text:'  return NOT FOUND', tip:'No Hamiltonian cycle in this graph.'}
+  ];
+
+  const bfLines = [
+    {n:1, text:'BRUTE_FORCE_HC(G, start)', tip:'Brute-force: try all permutations of non-start vertices.'},
+    {n:2, text:'  others = V \\ {start}', tip:'All vertices except the starting vertex.'},
+    {n:3, text:'  for each permutation P of others:', tip:'There are (n-1)! such permutations.'},
+    {n:4, text:'    path = [start] + P + [start]', tip:'Build a candidate cycle.'},
+    {n:5, text:'    valid = true', tip:'Assume the path is valid until proven otherwise.'},
+    {n:6, text:'    for i = 0 to n-1:', tip:'Check each consecutive pair in the cycle.'},
+    {n:7, text:'      if (path[i], path[i+1]) ∉ E:', tip:'If any consecutive pair is not an edge...'},
+    {n:8, text:'        valid = false; break', tip:'...the permutation is not a valid cycle.'},
+    {n:9, text:'    if valid: return path', tip:'Found a Hamiltonian cycle!'},
+    {n:10, text:'  return NOT FOUND', tip:'No permutation forms a valid Hamiltonian cycle.'}
+  ];
+
+  const el = id => document.getElementById(id);
+  const presetSelect = el('presetSelect');
+  const startSelect = el('startSelect');
+  const edgeInput = el('edgeInput');
+  const graphSvg = el('graphSvg');
+  const pqBody = el('pqBody');
+  const explainBox = el('explainBox');
+  const codeBox = el('codeBox');
+  const historyBody = el('historyBody');
+  const chartSvg = el('chartSvg');
+  const speedRange = el('speedRange');
+  const speedValue = el('speedValue');
+  const stepCounter = el('stepCounter');
+  const statusValue = el('statusValue');
+  const pathsCount = el('pathsCount');
+  const dpStates = el('dpStates');
+  const backtracks = el('backtracks');
+  const resultValue = el('resultValue');
+  const layoutMode = el('layoutMode');
+  const algoMode = el('algoMode');
+  const sizeRange = el('sizeRange');
+  const complexityText = el('complexityText');
+  const impactBox = el('impactBox');
+  const dpTableHeader = el('dpTableHeader');
+  const codeTitle = el('codeTitle');
+
+  let state = {
+    graph: null, steps: [], stepIndex: 0, playing: false, timer: null, speed: 1,
+    counters: {paths:0, dpStates:0, backtracks:0}, status: 'Idle', snapshots: []
+  };
+
+  function getCodeLines(){ return algoMode.value === 'bruteforce' ? bfLines : hkLines; }
+
+  function buildCodePanel(activeLine = 0){
+    const lines = getCodeLines();
+    codeBox.innerHTML = lines.map(l => `<span class="code-line ${l.n===activeLine?'active':''}" data-tip="${escapeHtml(l.tip)}"><span class="ln">${l.n}</span>${escapeHtml(l.text)}</span>`).join('');
+    const active = codeBox.querySelector('.code-line.active');
+    codeTitle.textContent = algoMode.value === 'bruteforce' ? 'Brute-Force Permutation Search' : 'Held-Karp DP';
+    dpTableHeader.textContent = algoMode.value === 'bruteforce' ? 'Current Permutation' : 'Held-Karp DP — dp[S][v]';
+  }
+
+  function escapeHtml(str){ return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+
+  function populatePresets(){
+    presetSelect.innerHTML = Object.entries(presets).map(([k,p]) => `<option value="${k}">${p.name}</option>`).join('');
+    presetSelect.value = 'pentagon';
+    loadPreset('pentagon');
+  }
+
+  function loadPreset(key){
+    const p = presets[key];
+    if(!p) return;
+    presetSelect.value = key;
+    const verts = [...new Set(p.edges.flatMap(e => [String(e[0]),String(e[1])]))].sort();
+    startSelect.innerHTML = verts.map(v => `<option value="${v}">${v}</option>`).join('');
+    startSelect.value = p.start;
+    edgeInput.value = p.edges.map(([u,v]) => `${u} ${v}`).join('\n');
+    for(const b of document.querySelectorAll('[data-example]')) b.classList.toggle('active-chip', b.dataset.example===key);
+    applyGraphFromInputs();
+  }
+
+  function parseGraph(){
+    const lines = edgeInput.value.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    const edges = [];
+    const vs = new Set();
+    for(const line of lines){
+      const parts = line.split(/\s+/);
+      if(parts.length < 2) continue;
+      const [u,v] = parts;
+      if(!u || !v) continue;
+      edges.push({u,v});
+      vs.add(u); vs.add(v);
+    }
+    const vertices = [...vs].sort();
+    const preset = presets[presetSelect.value];
+    let positions = {};
+    if(layoutMode.value === 'preset' && preset){
+      for(const v of vertices) positions[v] = preset.positions[v] || [100 + Math.random()*700, 80 + Math.random()*300];
+    } else {
+      const cx=460, cy=250, r=180;
+      vertices.forEach((v,i) => {
+        const ang = (Math.PI*2*i/Math.max(1,vertices.length)) - Math.PI/2;
+        positions[v] = [cx + r*Math.cos(ang), cy + r*Math.sin(ang)];
+      });
+    }
+    return {vertices, edges, positions, start: startSelect.value || vertices[0]};
+  }
+
+  function adjList(graph){
+    const adj = {};
+    graph.vertices.forEach(v => adj[v] = new Set());
+    graph.edges.forEach(e => { adj[e.u].add(e.v); adj[e.v].add(e.u); });
+    return adj;
+  }
+
+  function applyGraphFromInputs(){
+    state.graph = parseGraph();
+    drawGraph({});
+    buildCodePanel(0);
+    explainBox.textContent = 'Ready. Build steps to generate the algorithm trace.';
+    renderPQ([]);
+    renderHistory([]);
+    state.steps = []; state.snapshots = []; state.stepIndex = 0;
+    state.counters = {paths:0, dpStates:0, backtracks:0};
+    state.status = 'Idle';
+    updateStats();
+    drawComplexityChart();
+  }
+
+  function subsetStr(mask, vertices){
+    const arr = [];
+    for(let i=0;i<vertices.length;i++) if(mask & (1<<i)) arr.push(vertices[i]);
+    return '{' + arr.join(',') + '}';
+  }
+
+  function buildSteps(){
+    const graph = parseGraph();
+    if(!graph.vertices.includes(graph.start)) graph.start = graph.vertices[0];
+    state.graph = graph;
+    if(algoMode.value === 'bruteforce') buildBruteForceSteps(graph);
+    else buildHeldKarpSteps(graph);
+    state.stepIndex = 0;
+    state.status = 'Ready';
+    applyStep(0);
+  }
+
+  function buildHeldKarpSteps(graph){
+    const n = graph.vertices.length;
+    const adj = adjList(graph);
+    const verts = graph.vertices;
+    const si = verts.indexOf(graph.start);
+    const steps = [];
+    let counters = {paths:0, dpStates:0, backtracks:0};
+
+    const dp = new Array(1<<n).fill(null).map(() => new Array(n).fill(false));
+    const parent = new Array(1<<n).fill(null).map(() => new Array(n).fill(-1));
+    const dpEntries = [];
+
+    const push = (type, line, message, snap = {}) => {
+      steps.push({type, line, message, snapshot:{
+        ...snap,
+        currentPath: snap.currentPath || [],
+        highlightEdge: snap.highlightEdge || null,
+        visitedSet: snap.visitedSet || new Set(),
+        currentVertex: snap.currentVertex || null,
+        foundCycle: snap.foundCycle || null,
+        failedVertex: snap.failedVertex || null,
+        counters: {...counters},
+        dpEntries: [...dpEntries]
+      }});
+    };
+
+    push('init',1,`Start Held-Karp DP with ${n} vertices. Start vertex = ${graph.start}.`);
+
+    dp[1<<si][si] = true;
+    dpEntries.push({S: subsetStr(1<<si, verts), v: verts[si], val: true});
+    counters.dpStates++;
+    push('init',3,`Base case: dp[{${graph.start}}][${graph.start}] = true.`, {visitedSet: new Set([graph.start]), currentVertex: graph.start});
+
+    for(let S=0; S<(1<<n); S++){
+      if(!(S & (1<<si))) continue;
+      for(let vi=0; vi<n; vi++){
+        if(vi === si) continue;
+        if(!(S & (1<<vi))) continue;
+        const Swithout = S ^ (1<<vi);
+        for(let ui=0; ui<n; ui++){
+          if(ui === vi) continue;
+          if(!(Swithout & (1<<ui))) continue;
+          if(!adj[verts[ui]].has(verts[vi])) continue;
+          if(dp[Swithout][ui]){
+            if(!dp[S][vi]){
+              dp[S][vi] = true;
+              parent[S][vi] = ui;
+              dpEntries.push({S: subsetStr(S, verts), v: verts[vi], val: true});
+              counters.dpStates++;
+              const pathVerts = [];
+              for(let i=0;i<n;i++) if(S & (1<<i)) pathVerts.push(verts[i]);
+              push('dp',9,`dp[${subsetStr(S,verts)}][${verts[vi]}] = true  (via ${verts[ui]}→${verts[vi]})`,
+                {visitedSet: new Set(pathVerts), currentVertex: verts[vi], highlightEdge:[verts[ui],verts[vi]]});
+            }
+          }
+        }
+      }
+    }
+
+    const full = (1<<n)-1;
+    let foundCycle = null;
+    push('check',10,`All subsets processed. Check if any dp[ALL][v] where v is adjacent to ${graph.start}.`);
+
+    for(let vi=0;vi<n;vi++){
+      if(vi===si) continue;
+      if(!adj[verts[vi]].has(graph.start)) continue;
+      if(dp[full][vi]){
+        const cycle = [];
+        let curS = full, curV = vi;
+        while(curV !== si){
+          cycle.push(verts[curV]);
+          const pv = parent[curS][curV];
+          curS = curS ^ (1<<curV);
+          curV = pv;
+        }
+        cycle.reverse();
+        cycle.unshift(graph.start);
+        cycle.push(graph.start);
+        foundCycle = cycle;
+        counters.paths++;
+        push('done',12,`Hamiltonian Cycle FOUND: ${cycle.join(' → ')}`, {foundCycle: cycle, currentPath: cycle, visitedSet: new Set(verts)});
+        break;
+      }
+    }
+    if(!foundCycle){
+      push('done',13,`No Hamiltonian Cycle exists in this graph.`, {failedVertex: graph.start});
+    }
+
+    state.steps = steps;
+    state.snapshots = steps.map(s => s.snapshot);
+  }
+
+  function buildBruteForceSteps(graph){
+    const n = graph.vertices.length;
+    const adj = adjList(graph);
+    const verts = graph.vertices;
+    const si = verts.indexOf(graph.start);
+    const others = verts.filter(v => v !== graph.start);
+    const steps = [];
+    let counters = {paths:0, dpStates:0, backtracks:0};
+    const dpEntries = [];
+
+    const push = (type, line, message, snap = {}) => {
+      steps.push({type, line, message, snapshot:{
+        ...snap,
+        currentPath: snap.currentPath || [],
+        highlightEdge: snap.highlightEdge || null,
+        visitedSet: snap.visitedSet || new Set(),
+        currentVertex: snap.currentVertex || null,
+        foundCycle: snap.foundCycle || null,
+        failedVertex: snap.failedVertex || null,
+        counters: {...counters},
+        dpEntries: [...dpEntries]
+      }});
+    };
+
+    push('init',1,`Start brute-force search. Trying all ${factorial(n-1)} permutations of non-start vertices.`);
+
+    function* permutations(arr){
+      if(arr.length <= 1){ yield arr.slice(); return; }
+      for(let i=0;i<arr.length;i++){
+        const rest = arr.slice(0,i).concat(arr.slice(i+1));
+        for(const p of permutations(rest)) yield [arr[i], ...p];
+      }
+    }
+
+    let found = false;
+    for(const perm of permutations(others)){
+      const cycle = [graph.start, ...perm, graph.start];
+      counters.paths++;
+      dpEntries.length = 0;
+      dpEntries.push({S: cycle.join('→'), v: '', val: '?'});
+      push('check',3,`Permutation #${counters.paths}: ${cycle.join(' → ')}`, {currentPath: cycle, visitedSet: new Set(perm.concat([graph.start])), currentVertex: perm[0]});
+
+      let valid = true;
+      for(let i=0;i<cycle.length-1;i++){
+        const u = cycle[i], v = cycle[i+1];
+        if(!adj[u].has(v)){
+          counters.backtracks++;
+          dpEntries[0].val = 'FAIL at '+u+'→'+v;
+          push('fail',7,`Edge ${u}→${v} does not exist. Permutation invalid.`, {currentPath: cycle.slice(0,i+2), highlightEdge:[u,v], visitedSet: new Set(cycle.slice(0,i+1)), failedVertex: v});
+          valid = false;
+          break;
+        }
+      }
+      if(valid){
+        dpEntries[0].val = 'VALID!';
+        push('done',9,`Hamiltonian Cycle FOUND: ${cycle.join(' → ')}`, {foundCycle: cycle, currentPath: cycle, visitedSet: new Set(verts)});
+        found = true;
+        break;
+      }
+      if(counters.paths > 500){
+        push('done',10,`Stopped after 500 permutations (too many for visualization). No cycle found so far.`);
+        found = true;
+        break;
+      }
+    }
+    if(!found){
+      push('done',10,`No Hamiltonian Cycle exists. Checked all ${counters.paths} permutations.`);
+    }
+
+    state.steps = steps;
+    state.snapshots = steps.map(s => s.snapshot);
+  }
+
+  function factorial(n){ let r=1; for(let i=2;i<=n;i++) r*=i; return r; }
+
+  function drawGraph(snapshot){
+    const graph = state.graph || parseGraph();
+    graphSvg.innerHTML = '';
+    const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+    defs.innerHTML = `<filter id="glow"><feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#c01818" flood-opacity="0.4"/></filter>
+      <filter id="glowGreen"><feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#3dd9a2" flood-opacity="0.5"/></filter>`;
+    graphSvg.appendChild(defs);
+
+    const gEdges = document.createElementNS('http://www.w3.org/2000/svg','g');
+    const gNodes = document.createElementNS('http://www.w3.org/2000/svg','g');
+
+    const cycleEdges = new Set();
+    if(snapshot.foundCycle){
+      for(let i=0;i<snapshot.foundCycle.length-1;i++){
+        const a = snapshot.foundCycle[i], b = snapshot.foundCycle[i+1];
+        cycleEdges.add(`${a}-${b}`); cycleEdges.add(`${b}-${a}`);
+      }
+    }
+    const pathEdges = new Set();
+    if(snapshot.currentPath && !snapshot.foundCycle){
+      for(let i=0;i<snapshot.currentPath.length-1;i++){
+        const a = snapshot.currentPath[i], b = snapshot.currentPath[i+1];
+        pathEdges.add(`${a}-${b}`); pathEdges.add(`${b}-${a}`);
+      }
+    }
+
+    for(const e of graph.edges){
+      const [x1,y1] = graph.positions[e.u];
+      const [x2,y2] = graph.positions[e.v];
+      const key1 = `${e.u}-${e.v}`, key2 = `${e.v}-${e.u}`;
+      const isCycle = cycleEdges.has(key1);
+      const isPath = pathEdges.has(key1);
+      const isHighlight = snapshot.highlightEdge && ((snapshot.highlightEdge[0]===e.u && snapshot.highlightEdge[1]===e.v)||(snapshot.highlightEdge[0]===e.v && snapshot.highlightEdge[1]===e.u));
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+      line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+      line.setAttribute('stroke', isCycle ? '#3dd9a2' : isHighlight ? '#ff8f5a' : isPath ? '#ae7aea' : '#701010');
+      line.setAttribute('stroke-width', isCycle ? 5 : isHighlight ? 5 : isPath ? 4 : 2.2);
+      line.setAttribute('opacity', isCycle ? '1' : isPath ? '.9' : '.6');
+      if(isCycle) line.setAttribute('filter','url(#glowGreen)');
+      if(isHighlight) line.setAttribute('filter','url(#glow)');
+      gEdges.appendChild(line);
+    }
+
+    for(const v of graph.vertices){
+      const [x,y] = graph.positions[v];
+      const isCurrent = snapshot.currentVertex === v;
+      const inPath = snapshot.visitedSet && snapshot.visitedSet.has(v);
+      const isCycleNode = snapshot.foundCycle && snapshot.foundCycle.includes(v);
+      const isFailed = snapshot.failedVertex === v;
+
+      const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circle.setAttribute('cx',x); circle.setAttribute('cy',y); circle.setAttribute('r',28);
+      circle.setAttribute('fill', isCycleNode ? '#3dd9a2' : isFailed ? '#f36a8d' : isCurrent ? '#a81414' : inPath ? '#ae7aea' : '#c01818');
+      circle.setAttribute('fill-opacity', isCurrent ? '.95' : '.88');
+      circle.setAttribute('stroke', isCycleNode ? '#bbfbe1' : isCurrent ? '#dd5555' : inPath ? '#d0a8ff' : '#b84444');
+      circle.setAttribute('stroke-width', isCurrent ? '4' : '2.5');
+      if(isCycleNode) circle.setAttribute('filter','url(#glowGreen)');
+      gNodes.appendChild(circle);
+
+      const tx = document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx.setAttribute('x',x); tx.setAttribute('y',y+6); tx.setAttribute('text-anchor','middle');
+      tx.setAttribute('font-size','18'); tx.setAttribute('font-weight','800'); tx.setAttribute('fill','#0a1020');
+      tx.textContent = v;
+      gNodes.appendChild(tx);
+    }
+
+    graphSvg.appendChild(gEdges);
+    graphSvg.appendChild(gNodes);
+  }
+
+  function renderPQ(entries){
+    if(!entries || !entries.length){
+      pqBody.innerHTML = '<tr><td colspan="4" class="muted">No data yet.</td></tr>';
+      return;
+    }
+    const recent = entries.slice(-12);
+    pqBody.innerHTML = recent.map((e,i) => `<tr><td>${entries.length - recent.length + i + 1}</td><td>${escapeHtml(e.S)}</td><td>${escapeHtml(String(e.v))}</td><td><span class="badge ${e.val===true||e.val==='VALID!'?'b-final':e.val===false?'b-frontier':'b-active'}">${String(e.val)}</span></td></tr>`).join('');
+  }
+
+  function renderHistory(steps){
+    const recent = steps.slice(Math.max(0, state.stepIndex - 20), state.stepIndex + 1);
+    historyBody.innerHTML = recent.map((s,idx) => {
+      const gi = Math.max(0, state.stepIndex - 20) + idx;
+      return `<tr data-jump="${gi}"><td>${gi+1}</td><td>${capitalize(s.type)}</td><td>${s.snapshot.currentVertex||'-'}</td><td>${escapeHtml(s.message.slice(0,80))}</td></tr>`;
+    }).join('') || '<tr><td colspan="4">History will appear after steps are built.</td></tr>';
+    historyBody.querySelectorAll('tr[data-jump]').forEach(tr => tr.onclick = () => { pause(); applyStep(Number(tr.dataset.jump)); });
+  }
+
+  function applyStep(index){
+    if(!state.steps.length) return;
+    state.stepIndex = Math.max(0, Math.min(index, state.steps.length - 1));
+    const step = state.steps[state.stepIndex];
+    const snap = step.snapshot;
+    drawGraph(snap);
+    renderPQ(snap.dpEntries || []);
+    explainBox.textContent = step.message;
+    buildCodePanel(step.line);
+    state.counters = snap.counters || state.counters;
+    state.status = step.type === 'done' ? 'Done' : state.playing ? 'Playing' : state.status === 'Paused' ? 'Paused' : 'Ready';
+    updateStats();
+    renderHistory(state.steps);
+    if(snap.foundCycle) resultValue.textContent = 'FOUND';
+    else if(step.type === 'done') resultValue.textContent = 'NOT FOUND';
+    else resultValue.textContent = '—';
+  }
+
+  function updateStats(){
+    stepCounter.textContent = `${state.steps.length ? state.stepIndex+1 : 0} / ${state.steps.length}`;
+    statusValue.textContent = state.status;
+    pathsCount.textContent = state.counters.paths || 0;
+    dpStates.textContent = state.counters.dpStates || 0;
+    backtracks.textContent = state.counters.backtracks || 0;
+  }
+
+  function play(){
+    if(!state.steps.length) buildSteps();
+    pause();
+    state.playing = true;
+    state.status = 'Playing';
+    updateStats();
+    const tick = () => {
+      if(!state.playing) return;
+      if(state.stepIndex >= state.steps.length - 1){
+        state.playing = false; state.status = 'Done'; updateStats(); return;
+      }
+      applyStep(state.stepIndex + 1);
+      state.timer = setTimeout(tick, 720 / state.speed);
+    };
+    tick();
+  }
+
+  function pause(){
+    state.playing = false;
+    if(state.timer) clearTimeout(state.timer);
+    state.status = state.steps.length ? 'Paused' : 'Idle';
+    updateStats();
+  }
+
+  function reset(){
+    pause();
+    state.stepIndex = 0;
+    state.counters = {paths:0, dpStates:0, backtracks:0};
+    state.status = 'Idle';
+    resultValue.textContent = '—';
+    applyGraphFromInputs();
+  }
+
+  function stepOnce(){
+    if(!state.steps.length) buildSteps();
+    pause();
+    if(state.stepIndex < state.steps.length - 1){
+      state.status = 'Ready';
+      applyStep(state.stepIndex + 1);
+    }
+  }
+
+  function drawComplexityChart(){
+    const nMax = Number(sizeRange.value);
+    const bf = [], hk = [];
+    for(let v=3; v<=nMax; v++){
+      let fv = 1; for(let i=2;i<v;i++) fv*=i;
+      bf.push({x:v, y:fv});
+      hk.push({x:v, y: Math.pow(2,v) * v * v});
+    }
+    const allY = [...bf,...hk].map(p=>p.y);
+    const maxY = Math.max(...allY,1);
+    const w=560,h=260,m={l:56,r:16,t:18,b:38};
+    const sx = x => m.l + ((x-3)/(Math.max(1,nMax-3))) * (w-m.l-m.r);
+    const sy = y => h-m.b - (y/maxY) * (h-m.t-m.b);
+    const path = arr => arr.map((p,i) => `${i?'L':'M'}${sx(p.x).toFixed(2)},${sy(p.y).toFixed(2)}`).join(' ');
+    let grid = '';
+    for(let i=0;i<5;i++){
+      const y = m.t + i*(h-m.t-m.b)/4;
+      grid += `<line x1="${m.l}" y1="${y}" x2="${w-m.r}" y2="${y}" stroke="rgba(150,20,20,.12)"/>`;
+    }
+    let xticks='';
+    for(let v=3;v<=nMax;v++){
+      xticks += `<text x="${sx(v)}" y="${h-14}" fill="#dd5555" font-size="11" text-anchor="middle">${v}</text>`;
+    }
+    chartSvg.innerHTML = `
+      <rect x="0" y="0" width="560" height="260" rx="16" fill="#180a0a"/>
+      ${grid}
+      <line x1="${m.l}" y1="${h-m.b}" x2="${w-m.r}" y2="${h-m.b}" stroke="#882020"/>
+      <line x1="${m.l}" y1="${m.t}" x2="${m.l}" y2="${h-m.b}" stroke="#882020"/>
+      <path d="${path(hk)}" fill="none" stroke="#c01818" stroke-width="3"/>
+      <path d="${path(bf)}" fill="none" stroke="#ae7aea" stroke-width="3"/>
+      <text x="${w/2}" y="250" text-anchor="middle" fill="#e09090" font-size="12">Number of vertices (n)</text>
+      <text x="22" y="138" transform="rotate(-90 22 138)" text-anchor="middle" fill="#e09090" font-size="12">Operations</text>
+      ${xticks}
+    `;
+  }
+
+  function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  document.querySelectorAll('[data-example]').forEach(btn => btn.addEventListener('click', () => loadPreset(btn.dataset.example)));
+  presetSelect.addEventListener('change', e => loadPreset(e.target.value));
+  startSelect.addEventListener('change', applyGraphFromInputs);
+  edgeInput.addEventListener('input', applyGraphFromInputs);
+  layoutMode.addEventListener('change', applyGraphFromInputs);
+  algoMode.addEventListener('change', () => { buildCodePanel(0); applyGraphFromInputs(); });
+  sizeRange.addEventListener('input', drawComplexityChart);
+  speedRange.addEventListener('input', e => { state.speed = Number(e.target.value); speedValue.textContent = `${state.speed.toFixed(2)}x`; });
+  el('buildBtn').addEventListener('click', buildSteps);
+  el('stepBtn').addEventListener('click', stepOnce);
+  el('playBtn').addEventListener('click', play);
+  el('pauseBtn').addEventListener('click', pause);
+  el('resetBtn').addEventListener('click', reset);
+
+  populatePresets();
+  buildCodePanel(0);
+  drawComplexityChart();
+})();
+</script>
+</body>
+</html>
